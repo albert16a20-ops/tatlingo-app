@@ -5,7 +5,7 @@ import { today, Streak, Care, TIPS, PET_LINES, TICKLE_LINES, pick, shuffle } fro
 import { h, icon, mascot, button, chip, progressBar } from '../ui.js';
 import { playVoice, stopVoice, sfx, feel } from '../audio.js';
 
-const DURATIONS = { pet: 1400, tickle: 1300, eat: 1800, talk: 1600, happy: 900, wave: 1800 };
+const DURATIONS = { pet: 1400, tickle: 1300, eat: 4400, talk: 1600, happy: 900, wave: 1800 };
 let tipIndex = 0;
 
 export function roomScreen() {
@@ -14,6 +14,23 @@ export function roomScreen() {
   const learned = learnedIds.map(id => course.words[id]).filter(Boolean);
   const hasLearned = learned.length >= 3;
   const talkWords = learned.length ? learned : course.wordList.slice(0, 6);
+  // Пословицы (первые две темы юнита «Пословицы и обороты») и длинные фразы из уроков — всё уже озвучено.
+  const sayingsUnit = course.units.find(u => u.id.includes('sayings'));
+  const proverbs = sayingsUnit
+    ? [...new Set(sayingsUnit.lessons.flatMap(l => l.newWords))].slice(0, 12).map(id => course.words[id]).filter(Boolean)
+        .map(w => ({ tt: w.tt, ru: w.ru, audio: w.audio }))
+    : [];
+  const phraseMap = new Map();
+  course.units.forEach(u => u.lessons.forEach(l => l.exercises.forEach(e => {
+    if (e.type === 'listening' && String(e.audio).startsWith('snt_') && e.translation && e.text.split(/\s+/).length >= 5) {
+      phraseMap.set(e.audio, { tt: e.text, ru: e.translation, audio: e.audio });
+    }
+  })));
+  const phrases = [...phraseMap.values()];
+  let lastSaid = null;
+  const pickNew = list => { let x; do { x = pick(list); } while (list.length > 1 && x === lastSaid); lastSaid = x; return x; };
+  // Сколько Барсик «говорит»: по длине фразы
+  const speakMs = text => Math.min(6500, 900 + text.length * 80);
 
   const stats = h('div.chips.center-row');
   const levelBox = h('div.card.level-box');
@@ -72,13 +89,13 @@ export function roomScreen() {
       progressBar(lvl.progress, 'bar-gold'));
   }
 
-  function act(action, line, emoji) {
+  function act(action, line, emoji, ms) {
     speech.textContent = line;
-    if (action) js(B => B.play(action, DURATIONS[action] || 1200));
+    if (action) js(B => B.play(action, ms || DURATIONS[action] || 1200));
     renderFallback(action);
     if (emoji) burst(emoji);
     clearTimeout(resetTimer);
-    resetTimer = setTimeout(() => renderFallback('idle'), DURATIONS[action] || 1200);
+    resetTimer = setTimeout(() => renderFallback('idle'), ms || DURATIONS[action] || 1200);
   }
 
   function burst(emoji) {
@@ -100,7 +117,8 @@ export function roomScreen() {
   function feed() {
     if (treats() <= 0) { act(null, `Чәкчәк закончился 😿 За каждые ${Care.XP_PER_TREAT} XP в уроках я получаю новое угощение!`, ''); return; }
     sfx('match');
-    playVoice('tamle');
+    // «Тәмле!» Барсик говорит, когда доел
+    setTimeout(() => playVoice('tamle'), 3300);
     act('eat', 'Тәмле! Рәхмәт! Чәкчәк — самое вкусное на свете 😋', '🍯');
     store.update(s => { s.settings.treatsEaten += 1; s.settings.lastCare = Date.now(); });
     afterCare();
@@ -111,6 +129,20 @@ export function roomScreen() {
     const w = pick(talkWords);
     playVoice(w.audio);
     act('talk', `«${w.tt}» — это «${w.ru}». Повтори за мной!`, '💬');
+  }
+
+  function proverb() {
+    if (!proverbs.length) return;
+    const p = pickNew(proverbs);
+    playVoice(p.audio);
+    act('talk', `Мәкаль: «${p.tt}» — «${p.ru}».`, '📜', speakMs(p.tt));
+  }
+
+  function phrase() {
+    if (!phrases.length) return;
+    const p = pickNew(phrases);
+    playVoice(p.audio);
+    act('talk', `«${p.tt}» — «${p.ru}»`, '💬', speakMs(p.tt));
   }
 
   function tip() { act('talk', TIPS[tipIndex++ % TIPS.length], '💡'); }
@@ -167,6 +199,9 @@ export function roomScreen() {
       h('div.btn-row',
         button(`Угостить (${treats()})`, feed, { kind: 'gold' }),
         button('Скажи слово', talk)),
+      h('div.btn-row',
+        button('📜 Пословица', proverb, { kind: 'secondary' }),
+        button('🗣 Длинная фраза', phrase, { kind: 'secondary' })),
       h('div.btn-row',
         button('Совет', tip, { kind: 'secondary' }),
         button('Тюбетейка', changeCap, { kind: 'secondary' })));
