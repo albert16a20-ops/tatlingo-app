@@ -201,21 +201,21 @@ function openLink(e) {
 
 // ---------- Знакомство ----------
 export function onboardingScreen() {
-  let step = 0, goal = 10, level = 'beginner', female = false;
+  const levels = Object.values(app.course.levels);
+  let step = 0, goal = 10, level = levels.length ? levels[0].id : 'A1', female = false;
   const el = h('div.onboarding');
   const render = () => {
-    const choice = (text, selected, onClick) => h('button.choice', {
+    const choice = (text, selected, onClick, desc) => h('button.choice', {
       type: 'button', role: 'radio', 'aria-checked': selected ? 'true' : 'false', class: selected ? 'selected' : '',
       onclick: () => { sfx('select'); feel.tap(); onClick(); render(); },
-    }, h('span.radio'), h('span', text));
+    }, h('span.radio'), desc ? h('span', h('span', text), h('br'), h('span.muted.small', desc)) : h('span', text));
     let content;
     if (step === 0) {
       content = [h('h1', 'Сәлам! Мин — Барсик, твой помощник'), h('p.muted', 'Сколько времени в день ты готов уделять татарскому?'),
         ...GOALS.map(([m, label]) => choice(`${label} · ${m} мин в день`, goal === m, () => { goal = m; }))];
     } else if (step === 1) {
-      content = [h('h1', 'Твой уровень'), h('p.muted', 'Ничего страшного, если с нуля — начнём с самых первых слов.'),
-        choice('Учу с нуля', level === 'beginner', () => { level = 'beginner'; }),
-        choice('Знаю немного (откроются первые два юнита)', level === 'some', () => { level = 'some'; })];
+      content = [h('h1', 'Твой уровень'), h('p.muted', 'Выбери уровень сложности. Если учишь с нуля — бери A1. Уровень можно поменять в настройках.'),
+        ...levels.map(l => choice(`${l.id} · ${l.title}`, level === l.id, () => { level = l.id; }, l.description))];
     } else {
       content = [h('h1', 'Чей голос тебе нравится?'), h('p.muted', 'Все слова и фразы курса озвучены. Нажми, чтобы послушать — голос можно сменить в настройках.'),
         choice('Мужской голос', !female, () => { female = false; store.update(s => { s.settings.female = false; }); playVoice('salam'); }),
@@ -226,7 +226,7 @@ export function onboardingScreen() {
       h('div.step-dots', [0, 1, 2].map(i => h('span.dot', { class: i === step ? 'on' : '' }))),
       button(step < 2 ? 'Далее' : 'Начать', () => {
         if (step < 2) { step++; render(); return; }
-        store.update(s => { Object.assign(s.settings, { onboardingDone: true, goal, startLevel: level, female }); });
+        store.update(s => { Object.assign(s.settings, { onboardingDone: true, goal, startLevel: 'beginner', courseLevel: level, female }); });
         app.nav.home();
       }));
   };
