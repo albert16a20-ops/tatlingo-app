@@ -2,7 +2,7 @@
 import { app } from '../app.js';
 import { DialogEngine, buildSpellings } from '../logic.js';
 import { h, icon, mascot, barsikSpeech, button, letterBar } from '../ui.js';
-import { playVoice, stopVoice, sfx } from '../audio.js';
+import { playBarsik, stopVoice, sfx } from '../audio.js';
 
 const COLORS = ['u0', 'u1', 'u2', 'u3'];
 
@@ -55,7 +55,7 @@ export function chatScreen({ id }) {
     const ru = h('div.msg-ru', line.ru || '');
     ru.hidden = true;
     const b = h('div.msg.bot', {
-      onclick: () => { if (line.ru) ru.hidden = !ru.hidden; if (line.audio) playVoice(line.audio); scroll(); },
+      onclick: () => { if (line.ru) ru.hidden = !ru.hidden; if (line.audio) playBarsik(line.audio); scroll(); },
     }, h('div', line.text), line.ru ? ru : null);
     return h('div.msg-row', mascot('happy', 34), b);
   }
@@ -72,7 +72,7 @@ export function chatScreen({ id }) {
       delay += line.kind === 'note' ? 250 : 650;
       timers.push(setTimeout(() => {
         dots.before(bubble(line, false));
-        if (line.kind === 'say' && line.audio) playVoice(line.audio);
+        if (line.kind === 'say' && line.audio) playBarsik(line.audio);
         if (i === lines.length - 1) {
           dots.remove();
           typing = false;

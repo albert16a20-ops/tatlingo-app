@@ -3,7 +3,7 @@ import { app } from '../app.js';
 import { store, dayActivity } from '../store.js';
 import { today, Streak, Care, TIPS, PET_LINES, TICKLE_LINES, pick, shuffle } from '../logic.js';
 import { h, icon, mascot, button, chip, progressBar } from '../ui.js';
-import { playVoice, stopVoice, sfx, feel } from '../audio.js';
+import { playBarsik, stopVoice, sfx, feel } from '../audio.js';
 
 const DURATIONS = { pet: 1400, tickle: 1300, eat: 4400, talk: 1600, happy: 900, wave: 1800 };
 let tipIndex = 0;
@@ -118,7 +118,7 @@ export function roomScreen() {
     if (treats() <= 0) { act(null, `Чәкчәк закончился 😿 За каждые ${Care.XP_PER_TREAT} XP в уроках я получаю новое угощение!`, ''); return; }
     sfx('match');
     // «Тәмле!» Барсик говорит, когда доел
-    setTimeout(() => playVoice('tamle'), 3300);
+    setTimeout(() => playBarsik('tamle'), 3300);
     act('eat', 'Тәмле! Рәхмәт! Чәкчәк — самое вкусное на свете 😋', '🍯');
     store.update(s => { s.settings.treatsEaten += 1; s.settings.lastCare = Date.now(); });
     afterCare();
@@ -127,21 +127,21 @@ export function roomScreen() {
 
   function talk() {
     const w = pick(talkWords);
-    playVoice(w.audio);
+    playBarsik(w.audio);
     act('talk', `«${w.tt}» — это «${w.ru}». Повтори за мной!`, '💬');
   }
 
   function proverb() {
     if (!proverbs.length) return;
     const p = pickNew(proverbs);
-    playVoice(p.audio);
+    playBarsik(p.audio);
     act('talk', `Мәкаль: «${p.tt}» — «${p.ru}».`, '📜', speakMs(p.tt));
   }
 
   function phrase() {
     if (!phrases.length) return;
     const p = pickNew(phrases);
-    playVoice(p.audio);
+    playBarsik(p.audio);
     act('talk', `«${p.tt}» — «${p.ru}»`, '💬', speakMs(p.tt));
   }
 
@@ -160,7 +160,7 @@ export function roomScreen() {
     const word = pick(learned);
     const wrong = [...new Set(shuffle(course.wordList.filter(w => w.id !== word.id && w.ru !== word.ru)).slice(0, 8).map(w => w.ru))].slice(0, 2);
     quiz = { word, options: shuffle([...wrong, word.ru]), answer: null };
-    playVoice(word.audio);
+    playBarsik(word.audio);
     act('talk', `Что я сказал? «${word.tt}»`, '❓');
     renderPanel();
   }
@@ -187,7 +187,7 @@ export function roomScreen() {
           kind: !solved ? 'primary' : o === quiz.word.ru ? 'success' : o === quiz.answer ? 'danger' : 'muted',
         })),
         h('div.btn-row',
-          button('🔊 ' + quiz.word.tt, () => playVoice(quiz.word.audio), { kind: 'secondary' }),
+          button('🔊 ' + quiz.word.tt, () => playBarsik(quiz.word.audio), { kind: 'secondary' }),
           solved ? button('Далее', startQuiz, { kind: 'secondary' }) : button('Закрыть', () => { quiz = null; renderPanel(); }, { kind: 'secondary' })),
         solved ? button('Закрыть', () => { quiz = null; renderPanel(); }, { kind: 'secondary' }) : null);
       return;
