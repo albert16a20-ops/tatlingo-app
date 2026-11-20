@@ -236,6 +236,10 @@ export const Care = {
   LEVEL_XP: [0, 50, 150, 300, 600, 1000, 1600, 2500, 4000],
   LEVEL_TITLES: ['Котёнок', 'Любопытный котёнок', 'Юный барс', 'Смелый барс', 'Ловкий барс', 'Мудрый барс', 'Снежный барс', 'Ак барс', 'Барс-аксакал'],
   treats: (xp, eaten, bonus = 0) => Math.max(0, Math.floor(xp / 10) + bonus - eaten),
+  // Праздничный бәлеш: 1 за каждые 5 пройденных уроков
+  LESSONS_PER_BELESH: 5,
+  belesh: (lessons, eaten) => Math.max(0, Math.floor(lessons / 5) - eaten),
+  lessonsToBelesh: lessons => 5 - lessons % 5,
   mood(lastCare, now, practicedToday) {
     if (lastCare <= 0) return 70;
     const hours = Math.floor(Math.max(0, now - lastCare) / 3600000);

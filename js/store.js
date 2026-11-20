@@ -11,7 +11,7 @@ function fresh() {
     settings: {
       onboardingDone: false, goal: 10, startLevel: 'beginner', courseLevel: '',
       sound: true, theme: 'light', female: false,
-      cap: 0, treatsEaten: 0, lastCare: 0, bonusTreats: 0,
+      cap: 0, treatsEaten: 0, lastCare: 0, bonusTreats: 0, beleshEaten: 0,
     },
     player: {
       xp: 0, lessons: 0, perfect: 0, reviews: 0,

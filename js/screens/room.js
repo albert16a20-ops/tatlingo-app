@@ -5,7 +5,7 @@ import { today, Streak, Care, TIPS, PET_LINES, TICKLE_LINES, pick, shuffle } fro
 import { h, icon, mascot, button, chip, progressBar } from '../ui.js';
 import { playBarsik, stopVoice, sfx, feel } from '../audio.js';
 
-const DURATIONS = { pet: 1400, tickle: 1300, eat: 4400, talk: 1600, happy: 900, wave: 1800 };
+const DURATIONS = { pet: 1400, tickle: 1300, eat: 4400, feast: 8000, talk: 1600, happy: 900, wave: 1800 };
 let tipIndex = 0;
 
 export function roomScreen() {
@@ -47,6 +47,7 @@ export function roomScreen() {
   const mood = () => Care.mood(store.state.settings.lastCare, Date.now(), dayActivity(store.state, today()).lessons > 0);
   const sad = () => mood() < Care.SAD_BELOW;
   const treats = () => Care.treats(store.state.player.xp, store.state.settings.treatsEaten, store.state.settings.bonusTreats);
+  const belesh = () => Care.belesh(store.state.player.lessons, store.state.settings.beleshEaten || 0);
 
   const js = fn => {
     try { const B = frame.contentWindow && frame.contentWindow.Barsik; if (ready && B) fn(B); } catch (e) { /* сцена не готова */ }
@@ -74,7 +75,7 @@ export function roomScreen() {
   }
   function renderFallback(action) {
     if (!failed) return;
-    const m = action === 'pet' || action === 'happy' || action === 'eat' ? 'celebrate' : action === 'talk' ? 'happy' : sad() ? 'sad' : 'idle';
+    const m = action === 'pet' || action === 'happy' || action === 'eat' || action === 'feast' ? 'celebrate' : action === 'talk' ? 'happy' : sad() ? 'sad' : 'idle';
     fallback.replaceChildren(h('div.rug'), mascot(m, 190, pet));
   }
 
@@ -121,6 +122,26 @@ export function roomScreen() {
     setTimeout(() => playBarsik('tamle'), 3300);
     act('eat', 'Тәмле! Рәхмәт! Чәкчәк — самое вкусное на свете 😋', '🍯');
     store.update(s => { s.settings.treatsEaten += 1; s.settings.lastCare = Date.now(); });
+    afterCare();
+    renderPanel();
+  }
+
+  // Праздник: Барсик ест бәлеш — 8 секунд, конфетти, настроение 100%
+  let feastTimers = [];
+  function feast() {
+    if (belesh() <= 0) {
+      act(null, `Бәлеш пекут к празднику 🥧 Пройди ещё уроков: ${Care.lessonsToBelesh(store.state.player.lessons)} — и будет бәлеш!`, '');
+      return;
+    }
+    sfx('complete'); feel.ok();
+    feastTimers.forEach(clearTimeout);
+    feastTimers = [
+      setTimeout(() => playBarsik('balesh'), 300),
+      setTimeout(() => playBarsik('tamle'), 5800),
+      setTimeout(() => playBarsik('rahmat'), 6700),
+    ];
+    act('feast', 'Бәйрәм! Бәлеш — горячий, с мясом и картошкой! Тәмле! Рәхмәт! 🎉', '🎉');
+    store.update(s => { s.settings.beleshEaten = (s.settings.beleshEaten || 0) + 1; s.settings.lastCare = Date.now(); });
     afterCare();
     renderPanel();
   }
@@ -204,7 +225,10 @@ export function roomScreen() {
         button('🗣 Длинная фраза', phrase, { kind: 'secondary' })),
       h('div.btn-row',
         button('Совет', tip, { kind: 'secondary' }),
-        button('Тюбетейка', changeCap, { kind: 'secondary' })));
+        button('Тюбетейка', changeCap, { kind: 'secondary' })),
+      belesh() > 0
+        ? button(`🥧 Праздник: угостить бәлешем (${belesh()})`, feast, { kind: 'orange' })
+        : h('p.muted.small.center', `🥧 Праздничный бәлеш (балиш) — за каждые 5 уроков. До следующего уроков: ${Care.lessonsToBelesh(store.state.player.lessons)}`));
   }
 
   stage.append(fallback, frame, loader, fx);
@@ -221,6 +245,6 @@ export function roomScreen() {
     panel);
   return {
     el,
-    onHide() { clearTimeout(failTimer); clearTimeout(resetTimer); stopVoice(); delete window.Barsik3DBridge; },
+    onHide() { feastTimers.forEach(clearTimeout); clearTimeout(failTimer); clearTimeout(resetTimer); stopVoice(); delete window.Barsik3DBridge; },
   };
 }

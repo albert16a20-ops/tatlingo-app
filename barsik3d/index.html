@@ -317,6 +317,32 @@ const honeyDark = std(0xc9801f, { roughness: 0.35 });
   .forEach((p, i) => mesh(new THREE.SphereGeometry(0.03, 14, 10), i % 3 ? honey : honeyDark, treat, { pos: p }));
 treat.visible = false;
 
+// ---- Бәлеш: большой праздничный пирог, Барсик держит его двумя лапами ----
+const beleshTex = canvasTex(256, 256, (x, w, h) => {
+  const g = x.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, w / 2);
+  g.addColorStop(0, '#f2b75a'); g.addColorStop(0.7, '#d98c2f'); g.addColorStop(1, '#a8601c');
+  x.fillStyle = g; x.fillRect(0, 0, w, h);
+  for (let i = 0; i < 260; i++) {
+    x.fillStyle = `rgba(${120 + Math.random() * 60},${60 + Math.random() * 30},20,${0.08 + Math.random() * 0.12})`;
+    x.beginPath(); x.arc(Math.random() * w, Math.random() * h, 1 + Math.random() * 4, 0, 7); x.fill();
+  }
+});
+const crust = std(0xffffff, { map: beleshTex, roughness: 0.55 });
+const crustDark = std(0xb06a22, { roughness: 0.6 });
+const belesh = group(torso, [0, 0.3, 0.42]);
+const dome = [[0, 0], [0.2, 0], [0.215, 0.025], [0.2, 0.07], [0.16, 0.12], [0.1, 0.155], [0.035, 0.168], [0.028, 0.175], [0, 0.16]]
+  .map(([r, y]) => new THREE.Vector2(r, y));
+mesh(new THREE.LatheGeometry(dome, 40), crust, belesh, {});
+// Защипы по краю и «тишек» — дырочка сверху
+mesh(new THREE.TorusGeometry(0.205, 0.022, 8, 40), crustDark, belesh, { pos: [0, 0.03, 0], rot: [Math.PI / 2, 0, 0] });
+mesh(new THREE.TorusGeometry(0.033, 0.011, 8, 20), crustDark, belesh, { pos: [0, 0.168, 0], rot: [Math.PI / 2, 0, 0] });
+mesh(new THREE.CircleGeometry(0.026, 20), std(0x5a2e0e, { roughness: 0.9 }), belesh, { pos: [0, 0.166, 0], rot: [-Math.PI / 2, 0, 0], shadow: false });
+belesh.rotation.x = 0.55;
+belesh.visible = false;
+// Пар над горячим бәлешем
+const steamMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+const steam = Array.from({ length: 6 }, (_, i) => mesh(new THREE.SphereGeometry(0.035, 10, 8), steamMat, belesh, { pos: [0, 0.2, 0], shadow: false }));
+
 // ---- Хвост ----
 const tailRoot = group(body, [0.05, 0.5, -0.22]);
 const tailTex = canvasTex(512, 64, (x, w, h) => {
@@ -596,6 +622,37 @@ function updateCrumbs(dt) {
   });
 }
 
+// ---- Конфетти для праздника ----
+const CONFETTI_COLORS = [0xe8b84a, 0x17a463, 0xe2553a, 0x3b82f6, 0xf472b6, 0xffffff];
+const confetti = Array.from({ length: 48 }, (_, i) => {
+  const m = mesh(new THREE.PlaneGeometry(0.09, 0.05), new THREE.MeshBasicMaterial({ color: CONFETTI_COLORS[i % CONFETTI_COLORS.length], side: THREE.DoubleSide }), root, { shadow: false });
+  m.visible = false;
+  return { m, life: 0, v: new THREE.Vector3(), spin: new THREE.Vector3() };
+});
+function spawnConfetti(n) {
+  let made = 0;
+  confetti.forEach(c => {
+    if (made >= n || c.life > 0) return;
+    c.life = 1;
+    c.m.position.set((Math.random() - 0.5) * 0.6, 1.6 + Math.random() * 0.3, 0.3 + (Math.random() - 0.5) * 0.5);
+    c.v.set((Math.random() - 0.5) * 2.4, 1.2 + Math.random() * 1.4, (Math.random() - 0.2) * 1.2);
+    c.spin.set(Math.random() * 12, Math.random() * 12, Math.random() * 12);
+    c.m.visible = true;
+    made++;
+  });
+}
+function updateConfetti(dt) {
+  confetti.forEach(c => {
+    if (c.life <= 0) return;
+    c.life -= dt * 0.42;
+    c.v.y -= 2.2 * dt;
+    c.v.multiplyScalar(1 - dt * 1.4);
+    c.m.position.addScaledVector(c.v, dt);
+    c.m.rotation.x += c.spin.x * dt; c.m.rotation.y += c.spin.y * dt; c.m.rotation.z += c.spin.z * dt;
+    if (c.life <= 0 || c.m.position.y < -0.2) { c.life = 0; c.m.visible = false; }
+  });
+}
+
 // ================= Выражения лица =================
 // open — насколько открыты глаза (1 — широко, 0 — закрыты), smileLids — нижние веки поднимаются (улыбка глазами)
 const face = { open: 1, smileLids: 0, pupil: 1, browY: 0, browTilt: 0, mouth: 0, smile: 1 };
@@ -631,9 +688,11 @@ const EXPR = {
 };
 
 // ================= Анимации =================
-const ACTIONS = { wave: 1800, talk: 2200, dance: 2600, eat: 4400, surprise: 1100, pet: 1400, tickle: 1300, listen: 0, sad: 0, happy: 1500 };
+const ACTIONS = { wave: 1800, talk: 2200, dance: 2600, eat: 4400, feast: 8000, surprise: 1100, pet: 1400, tickle: 1300, listen: 0, sad: 0, happy: 1500 };
 // Еда: сколько кусочков уже откушено и какого размера чәкчәк в лапе
 let bites = 0, treatSize = 0;
+// Праздник с бәлешем: размер пирога (откусывается по четверти) и волны конфетти
+let beleshSize = 0, confettiWaves = 0;
 // «Жизнь» в покое: время от времени Барсик зевает, читает книгу, чешет ушко…
 const IDLE_ACTS = { yawn: 2.6, read: 3.2, scratch: 1.9, tilt: 1.7, wiggle: 1.6, sniff: 1.6 };
 let idleAct = null, idleStart = 0, nextIdle = 5, lastIdle = null;
@@ -650,6 +709,7 @@ function play(name, ms) {
   actionMs = ms != null && ms > 0 ? ms : (ACTIONS[name] || 0);
   if (name === 'idle') action = restPose;
   if (name === 'eat') { bites = 0; treatSize = 0; }
+  if (name === 'feast') { bites = 0; beleshSize = 0; confettiWaves = 0; }
   idleAct = null;
   if (!native) ({ pet: '❤️', tickle: '✨', eat: '🍯', dance: '🎵', happy: '⭐' })[name] && burst(({ pet: '❤️', tickle: '✨', eat: '🍯', dance: '🎵', happy: '⭐' })[name]);
 }
@@ -706,6 +766,50 @@ function frame() {
       const p = seg(0.87, 1);
       expr = 'happy'; mouth = 0.6; jump = Math.sin(p * Math.PI) * 0.09; tgt.tailUp = 1; tgt.hZ = 0.14;
       tgt.rX = -0.8; tgt.rZ = -0.55 + Math.sin(p * Math.PI * 6) * 0.14;
+    }
+  }
+  let beleshTarget = 0, steamOn = 0;
+  if (is('feast')) {
+    bookOn = false;
+    // Обе лапы держат пирог по бокам
+    tgt.rZ = 0.02; tgt.lZ = -0.02;
+    if (confettiWaves === 0) { confettiWaves = 1; spawnConfetti(28); }
+    if (t < 0.12) {
+      // Ого! Целый бәлеш — подпрыгнул от радости
+      beleshTarget = 1; expr = 'wow'; mouth = 0.5; tgt.ear = 1; tgt.tailUp = 1;
+      tgt.rX = -1.15; tgt.lX = -1.15; jump = Math.sin(seg(0, 0.12) * Math.PI) * 0.2;
+    } else if (t < 0.24) {
+      // Принюхивается к горячему пирогу, зажмурившись
+      beleshTarget = 1; steamOn = 1; expr = 'yum'; tgt.ear = 1;
+      tgt.rX = -1.25; tgt.lX = -1.25; tgt.hX = 0.22;
+      noseWiggle = Math.sin(t * Math.PI * 90); sway = Math.sin(t * Math.PI * 10) * 0.03;
+    } else if (t < 0.72) {
+      // Четыре больших укуса
+      const b = (t - 0.24) / 0.12, i = Math.min(3, Math.floor(b)), u = b - i;
+      tgt.tailUp = 1; steamOn = 0.5;
+      if (u < 0.3) {
+        tgt.rX = -1.5; tgt.lX = -1.5; tgt.hX = 0.32; mouth = 1; expr = 'happy';
+        beleshTarget = 1 - i / 4;
+      } else {
+        if (bites <= i) { bites = i + 1; spawnCrumbs(7); }
+        beleshTarget = 1 - bites / 4;
+        tgt.rX = -1.15; tgt.lX = -1.15; expr = 'yum';
+        const chew = Math.sin(u * Math.PI * 10);
+        mouth = 0.08 + Math.max(0, chew) * 0.3;
+        puff = 0.75 + chew * 0.25;
+        tgt.hX = chew * 0.05; tgt.hZ = Math.sin(u * Math.PI * 2) * 0.14; sway = Math.sin(u * Math.PI * 4) * 0.035;
+      }
+    } else if (t < 0.8) {
+      // Облизывается и гладит животик
+      const p = seg(0.72, 0.8);
+      expr = 'happy'; mouth = 0.42; lick = Math.sin(p * Math.PI * 3);
+      tgt.rX = -0.8; tgt.lX = -0.8; tgt.rZ = -0.55 + Math.sin(p * Math.PI * 6) * 0.14; tgt.lZ = 0.3;
+    } else {
+      // Праздничный танец и ещё конфетти
+      if (confettiWaves === 1) { confettiWaves = 2; spawnConfetti(20); }
+      const b = Math.sin(t * Math.PI * 22);
+      tgt.rZ = 2.4 + b * 0.4; tgt.lZ = -2.4 + b * 0.4; tgt.rX = 0; tgt.lX = 0; tgt.hZ = b * 0.18;
+      jump = Math.abs(b) * 0.08; sway = b * 0.12; expr = 'happy'; mouth = 0.75; tgt.tailUp = 1;
     }
   }
   // Покой: случайные «живые» движения
@@ -766,6 +870,21 @@ function frame() {
   treatSize = lerp(treatSize, treatTarget, 1 - Math.exp(-dt * 16));
   treat.visible = treatSize > 0.03;
   treat.scale.setScalar(Math.max(0.001, treatSize));
+  // Бәлеш едет вместе с лапами: точка между ними
+  beleshSize = lerp(beleshSize, beleshTarget, 1 - Math.exp(-dt * 12));
+  belesh.visible = beleshSize > 0.03;
+  if (belesh.visible) {
+    const ax = -(cur.rX + cur.lX) / 2;
+    belesh.position.set(0, 0.46 - 0.43 * Math.cos(ax) + 0.02, 0.43 * Math.sin(ax) + 0.02);
+    belesh.scale.set(Math.max(0.001, 1.25 * beleshSize), Math.max(0.001, 1.25 * (0.6 + 0.4 * beleshSize)), Math.max(0.001, 1.25 * beleshSize));
+  }
+  steamMat.opacity = lerp(steamMat.opacity, steamOn * 0.45, 1 - Math.exp(-dt * 6));
+  steam.forEach((s, i) => {
+    const ph = (time * 0.7 + i / steam.length) % 1;
+    s.position.set(Math.sin(ph * 9 + i) * 0.04, 0.2 + ph * 0.35, 0);
+    s.scale.setScalar(0.6 + ph * 1.6);
+  });
+  updateConfetti(dt);
   muzzle.forEach(m => m.scale.set(1 + puff * 0.24, 0.85 + puff * 0.14, 0.8 + puff * 0.16));
   if (lick !== 0) { tongue.visible = true; tongue.position.set(lick * 0.55, -0.15, 0.75); tongue.scale.set(1.3, 0.7, 1.7); }
   else { tongue.position.set(0, -0.4, 0.4); tongue.scale.set(1, 0.6, 1); }
@@ -868,6 +987,7 @@ if (!native) {
     ['💬 Говорит', () => play('talk')],
     ['💃 Танцует', () => play('dance')],
     ['🍯 Ест', () => play('eat')],
+    ['🥧 Бәлеш', () => play('feast')],
     ['😲 Удивлён', () => play('surprise')],
     ['😊 Радуется', () => play('happy')],
     ['😢 Грустит', () => window.Barsik.setSad(restPose !== 'sad')],
