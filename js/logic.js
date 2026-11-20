@@ -402,7 +402,7 @@ export function prepareCourse(raw) {
   return {
     units, words, wordList: Object.values(words), grammar, lessons, levels, topics,
     dialogs: raw.dialogs,
-    audio: new Set(raw.audio), audioFemale: new Set(raw.audioFemale),
+    audio: new Set(raw.audio), audioFemale: new Set(raw.audioFemale), audioBarsik: new Set(raw.audioBarsik || []),
   };
 }
 
