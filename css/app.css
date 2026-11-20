@@ -504,3 +504,14 @@ body.is-chat .view { overflow: hidden; }
   .view > .screen { max-width: 640px; margin: 0 auto; }
   .tabbar { max-width: 640px; margin: 0 auto; }
 }
+
+/* Комната Барсика: маленькие кнопки в одну строку */
+.room-mini { display: flex; gap: 8px; margin-top: 4px; }
+.mini-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 6px 2px; border-radius: 14px; border: 1px solid var(--outline-soft);
+  background: var(--surface); color: var(--primary);
+  font: 700 11.5px/1.2 'Nunito', sans-serif; cursor: pointer;
+}
+.mini-btn:active { transform: translateY(1px); }
+.mini-emoji { font-size: 18px; line-height: 1.1; }

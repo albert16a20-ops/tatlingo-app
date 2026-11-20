@@ -40,7 +40,8 @@ export function roomScreen() {
   const fx = h('div.room-fx', { 'aria-hidden': 'true' });
 
   let ready = false, drawn = false, failed = false, quiz = null, resetTimer = null;
-  const frame = h('iframe.barsik-frame', { src: 'barsik3d/index.html', title: 'Барсик в 3D', allow: 'autoplay' });
+  // Сцена — с того же сайта, что и страница (а не с CDN из <base>): иначе мост к Барсику не работает
+  const frame = h('iframe.barsik-frame', { src: new URL('barsik3d/index.html', location.href).href, title: 'Барсик в 3D', allow: 'autoplay' });
   const loader = h('div.loader');
   const fallback = h('div.room-fallback');
 
@@ -64,7 +65,7 @@ export function roomScreen() {
     onTap(part) { if (part === 'head') pet(); else tickle(); },
     onLog() {},
   };
-  const failTimer = setTimeout(() => { if (!drawn) useFallback(); }, 12000);
+  const failTimer = setTimeout(() => { if (!drawn) useFallback(); }, 25000);
 
   function useFallback() {
     if (failed) return;
@@ -218,17 +219,15 @@ export function roomScreen() {
         button('💬 Поговорить', () => app.nav.go('chats')),
         button('🎲 Угадай слово', startQuiz, { kind: 'orange' })),
       h('div.btn-row',
-        button(`Угостить (${treats()})`, feed, { kind: 'gold' }),
-        button('Скажи слово', talk)),
-      h('div.btn-row',
-        button('📜 Пословица', proverb, { kind: 'secondary' }),
-        button('🗣 Длинная фраза', phrase, { kind: 'secondary' })),
-      h('div.btn-row',
-        button('Совет', tip, { kind: 'secondary' }),
-        button('Тюбетейка', changeCap, { kind: 'secondary' })),
-      belesh() > 0
-        ? button(`🥧 Праздник: угостить бәлешем (${belesh()})`, feast, { kind: 'orange' })
-        : h('p.muted.small.center', `🥧 Праздничный бәлеш (балиш) — за каждые 5 уроков. До следующего уроков: ${Care.lessonsToBelesh(store.state.player.lessons)}`));
+        button(`🍯 Чәкчәк (${treats()})`, feed, { kind: 'gold' }),
+        belesh() > 0
+          ? button(`🥧 Бәлеш (${belesh()})`, feast, { kind: 'orange' })
+          : button(`🥧 Бәлеш: ${Care.lessonsToBelesh(store.state.player.lessons)} ур.`, feast, { kind: 'muted' }),
+        button('🗣 Слово', talk)),
+      // Мелкие действия — маленькие кнопки в одну строку, чтобы Барсику хватало места
+      h('div.room-mini',
+        ...[['📜', 'Мәкаль', proverb], ['🗣', 'Фраза', phrase], ['💡', 'Совет', tip], ['🎩', 'Түбәтәй', changeCap]].map(([e, label, fn]) =>
+          h('button.mini-btn', { type: 'button', onclick: () => { sfx('tap'); feel.tap(); fn(); } }, h('span.mini-emoji', e), h('span', label)))));
   }
 
   stage.append(fallback, frame, loader, fx);
@@ -241,7 +240,6 @@ export function roomScreen() {
       !app.tg ? h('button.icon-btn', { type: 'button', 'aria-label': 'Назад', onclick: () => app.nav.back() }, icon('back')) : null,
       h('h1.screen-title', 'Комната Барсика')),
     stats, levelBox, speech, stage,
-    h('p.muted.small.center', 'Погладь голову · пощекочи животик · поверни Барсика пальцем'),
     panel);
   return {
     el,
