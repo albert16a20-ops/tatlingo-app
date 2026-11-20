@@ -163,7 +163,8 @@ export function settingsScreen() {
         h('h3', 'Звук и задания'),
         toggle('Звуковые эффекты', st.sound, v => set(s => { s.sound = v; })),
         h('div.label', 'Голос озвучки'),
-        seg([[false, 'Мужской'], [true, 'Женский']], st.female, v => { set(s => { s.female = v; }); setTimeout(() => playVoice('salam'), 150); }),
+        seg([['male', 'Мужской'], ['female', 'Женский'], ['barsik', 'Барсик 🐆']], st.barsikVoice ? 'barsik' : st.female ? 'female' : 'male',
+          v => { set(s => { s.female = v !== 'male'; s.barsikVoice = v === 'barsik'; }); setTimeout(() => playVoice('salam'), 150); }),
         h('p.muted.small', 'Задания на произношение есть только в приложении для Android.')),
       h('div.card.section-card',
         h('h3', 'Цель на день'),
@@ -202,7 +203,7 @@ function openLink(e) {
 // ---------- Знакомство ----------
 export function onboardingScreen() {
   const levels = Object.values(app.course.levels);
-  let step = 0, goal = 10, level = levels.length ? levels[0].id : 'A1', female = false;
+  let step = 0, goal = 10, level = levels.length ? levels[0].id : 'A1', voice = 'male';
   const el = h('div.onboarding');
   const render = () => {
     const choice = (text, selected, onClick, desc) => h('button.choice', {
@@ -218,15 +219,19 @@ export function onboardingScreen() {
         ...levels.map(l => choice(`${l.id} · ${l.title}`, level === l.id, () => { level = l.id; }, l.description))];
     } else {
       content = [h('h1', 'Чей голос тебе нравится?'), h('p.muted', 'Все слова и фразы курса озвучены. Нажми, чтобы послушать — голос можно сменить в настройках.'),
-        choice('Мужской голос', !female, () => { female = false; store.update(s => { s.settings.female = false; }); playVoice('salam'); }),
-        choice('Женский голос', female, () => { female = true; store.update(s => { s.settings.female = true; }); playVoice('salam'); })];
+        ...[['male', 'Мужской голос'], ['female', 'Женский голос'], ['barsik', 'Голос Барсика — звонкий, как в мультике 🐆']].map(([v, label]) =>
+          choice(label, voice === v, () => {
+            voice = v;
+            store.update(s => { s.settings.female = v !== 'male'; s.settings.barsikVoice = v === 'barsik'; });
+            playVoice('salam');
+          }))];
     }
     el.replaceChildren(
       h('div.onb-scroll', mascot(step === 2 ? 'celebrate' : 'happy', 140), h('div.onb-step', { role: 'radiogroup' }, content)),
       h('div.step-dots', [0, 1, 2].map(i => h('span.dot', { class: i === step ? 'on' : '' }))),
       button(step < 2 ? 'Далее' : 'Начать', () => {
         if (step < 2) { step++; render(); return; }
-        store.update(s => { Object.assign(s.settings, { onboardingDone: true, goal, startLevel: 'beginner', courseLevel: level, female }); });
+        store.update(s => { Object.assign(s.settings, { onboardingDone: true, goal, startLevel: 'beginner', courseLevel: level, female: voice !== 'male', barsikVoice: voice === 'barsik' }); });
         app.nav.home();
       }));
   };

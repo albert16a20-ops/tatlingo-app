@@ -32,6 +32,12 @@ export const hasAudio = key => !!urlFor(key);
 
 /** Проиграть запись; false — записи нет. */
 export function playVoice(key) {
+  // Выбран голос Барсика — им звучит вся озвучка
+  if (store.state.settings.barsikVoice && ctx) return playBarsik(key);
+  return playPlain(key);
+}
+
+function playPlain(key) {
   const url = urlFor(key);
   if (!url) return false;
   try {
@@ -110,7 +116,7 @@ async function barsikBuffer(url) {
 export function playBarsik(key) {
   const url = course && key && course.audioFemale.has(key) ? `audio_female/${encodeURIComponent(key)}.m4a` : urlFor(key);
   if (!url) return false;
-  if (!ctx) return playVoice(key);
+  if (!ctx) return playPlain(key);
   try { voice.pause(); } catch (e) { /* ничего */ }
   stopBarsik();
   const token = barsikToken;
@@ -123,7 +129,7 @@ export function playBarsik(key) {
     src.connect(ctx.destination);
     src.start();
     barsikSrc = src;
-  }).catch(() => { if (token === barsikToken) playVoice(key); });
+  }).catch(() => { if (token === barsikToken) playPlain(key); });
   return true;
 }
 
