@@ -57,6 +57,19 @@ function playUrl(url) {
   return true;
 }
 
+/**
+ * Ждёт, пока договорит текущая запись (или её остановят). Нужен, чтобы реплики Барсика
+ * в чате не накладывались: следующая начинается после предыдущей. Не дольше [maxMs].
+ */
+export function voiceDone(maxMs = 9000) {
+  return new Promise(resolve => {
+    if (voice.paused || voice.ended) { resolve(); return; }
+    const done = () => { clearTimeout(t); ['ended', 'pause', 'error'].forEach(e => voice.removeEventListener(e, done)); resolve(); };
+    const t = setTimeout(done, maxMs);
+    ['ended', 'pause', 'error'].forEach(e => voice.addEventListener(e, done));
+  });
+}
+
 export function stopVoice() {
   try { voice.pause(); } catch (e) { /* ничего */ }
 }

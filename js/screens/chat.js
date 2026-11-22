@@ -2,7 +2,7 @@
 import { app } from '../app.js';
 import { DialogEngine, buildSpellings } from '../logic.js';
 import { h, icon, mascot, barsikSpeech, button, letterBar } from '../ui.js';
-import { playBarsik, stopVoice, sfx } from '../audio.js';
+import { playBarsik, stopVoice, voiceDone, sfx } from '../audio.js';
 
 const COLORS = ['u0', 'u1', 'u2', 'u3'];
 
@@ -28,6 +28,7 @@ export function chatScreen({ id }) {
   const engine = new DialogEngine(dialog, buildSpellings(texts));
   let typing = false;
   let timers = [];
+  let chatRun = 0;
 
   const feed = h('div.chat-feed', { 'aria-live': 'polite' });
   const suggestions = h('div.suggest');
@@ -67,21 +68,28 @@ export function chatScreen({ id }) {
     const dots = h('div.msg-row.typing', mascot('thinking', 34), h('div.msg.bot.dots', h('span'), h('span'), h('span')));
     feed.append(dots);
     scroll();
-    let delay = 0;
-    lines.forEach((line, i) => {
-      delay += line.kind === 'note' ? 250 : 650;
-      timers.push(setTimeout(() => {
+    // Реплики идут по очереди: следующая — только когда Барсик договорил предыдущую (иначе озвучка накладывается)
+    const run = ++chatRun;
+    const wait = ms => new Promise(r => timers.push(setTimeout(r, ms)));
+    (async () => {
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        await wait(line.kind === 'note' ? 250 : 650);
+        if (run !== chatRun) return;
         dots.before(bubble(line, false));
-        if (line.kind === 'say' && line.audio) playBarsik(line.audio);
-        if (i === lines.length - 1) {
-          dots.remove();
-          typing = false;
-          if (engine.finished) sfx('complete');
-          updateComposer();
-        }
         scroll();
-      }, delay));
-    });
+        if (line.kind === 'say' && line.audio && playBarsik(line.audio) && i < lines.length - 1) {
+          await new Promise(r => setTimeout(r, 120)); // запись успевает начаться
+          await voiceDone();
+          if (run !== chatRun) return;
+        }
+      }
+      dots.remove();
+      typing = false;
+      if (engine.finished) sfx('complete');
+      updateComposer();
+      scroll();
+    })();
   }
 
   function updateComposer() {
@@ -117,6 +125,6 @@ export function chatScreen({ id }) {
   restart();
   return {
     el,
-    onHide() { timers.forEach(clearTimeout); stopVoice(); },
+    onHide() { chatRun++; timers.forEach(clearTimeout); stopVoice(); },
   };
 }
